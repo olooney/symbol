@@ -46,4 +46,11 @@ The uses of Symbols are essentially the same for those as for interned strings:
 keys in key/value pair objects used by dynamic languages, binary file formats, 
 RPC calls, etc., where performance and speed are at a premium.
 
-This library is in the public domain, and the author disclaims copyright.
+This library includes the Hsieh Super Fast Hash function, which is licensed
+under the LGPL 2.1 license.
+http://www.azillionmonkeys.com/qed/hash.html
+I've included the required GPL and LGPL license files since I suppose this
+counts as a redistribution of it.  I'd like the rest of the code to be public
+domain, but it doesn't make a lick of difference if it includes an LGPL
+component.  So I guess I'll release it all under LGPL for simplicity, or find a
+different hash function.
