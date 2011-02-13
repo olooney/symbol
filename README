@@ -32,15 +32,13 @@ hash the strings to some unique identifier. However, that that makes debugging
 very difficult indeed, and if someone did need reversabilty for some reason
 they would simply be out of luck.
 
-Instead, Symbols provides a compromise: you restrict yourself to
-identifiers: mixed-case alphanumeric characters plus "-", "_", "$", and ":",
-(This encompasses the usual identfier formats for a variety of languages.)
-and you can have perfect reversability for identifiers under 10 characters and 
-partial reversability for longer identifiers. In both cases the resulting
-Symbol fits into a single 64-bit integer: a particularly simple and high-
-performance type to work with.  Clients that require reversability can simply 
-restrict themselves to identifiers under 10 characters: annoying, but not a
-deal breaker.
+Instead, Symbols provides a compromise: you restrict yourself to C identifiers:
+mixed-case alphanumeric characters plus underscores, and you can have perfect
+reversability for identifiers under 10 characters and partial reversability for
+longer identifiers. In both cases the resulting Symbol fits into a single
+64-bit integer: a particularly simple and high- performance type to work with.
+Clients that require reversability can simply restrict themselves to
+identifiers under 10 characters: annoying, but not a deal breaker.
 
 The uses of Symbols are essentially the same for those as for interned strings:
 keys in key/value pair objects used by dynamic languages, binary file formats, 

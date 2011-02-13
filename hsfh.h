@@ -1,3 +1,9 @@
+// The famous Hsieh Super Fast Hash function
+// http://www.azillionmonkeys.com/qed/hash.html
+//
+// I've added the header guard macros and gave it internal linkage so it can
+// go in a header file, but otherwise it's a straight copy.  The original
+// is distributed under the LGPL, so this is too.
 #ifndef HSIEH_SUPER_FAST_HASH_H
 #define HSIEH_SUPER_FAST_HASH_H
 #include <stdint.h>
@@ -12,7 +18,7 @@
                        +(uint32_t)(((const uint8_t *)(d))[0]) )
 #endif
 
-uint32_t SuperFastHash (const char * data, int len) {
+static uint32_t SuperFastHash (const char * data, int len) {
 uint32_t hash = len, tmp;
 int rem;
 
