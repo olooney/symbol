@@ -1,0 +1,49 @@
+When runtime flexibility is more important than compile time type checking,
+strings are often used as unique identifiers. For example, rather than
+defining intergal constants RED, BLUE, GREEN, etc., you might colors around
+as strings "red", "blue", "green". This makes it easy to store them in config
+files, debug them, and manipulate them at runtime, but means that you have to
+handle errors like "bleen" at runtime. One disadvantage of this technique
+is that comparing, sorting, and searching for strings is rather slower than
+doing the same for numbers, and can waste memory if defensive copies are used.
+
+One way to solve these problems while keeping the runtime flexibility is
+to register unique, immutable strings in a single shared registry. Everybody
+is using pointers to the same strings so comparisions (at least for equality)
+can be made quickly, and the registry makes sure only a single copy of each
+string is used. This is called string interning.
+
+However, string interning comes with its own set of problems. Making the
+registry thread-safe is a challenge and reduces performance, and interned 
+strings cannot be easily shared between processes or serialized for later 
+usage. The registry itself can eat up memory as many one-use strings are 
+added forever, or impact performance if it needs garbage collection.
+
+The key insight behind the Symbol library is that the registry (the pool of the
+originals of the interned strings), is itself unnecessary if you're willing
+to give up perfect reversability. By giving up the registry, we automatically
+remove thread and process syncronization concerns. Since we don't need a lookup
+table, we can serialize, precompute, or pass around Symbols to our hearts
+content.  The mere fact that we're gaining functionality by removing features 
+suggests this is an avenue worth exploring.
+
+Now, if we were willing to give up reversability *completely*, we could just 
+hash the strings to some unique identifier. However, that that makes debugging 
+very difficult indeed, and if someone did need reversabilty for some reason
+they would simply be out of luck.
+
+Instead, Symbols provides a compromise: you restrict yourself to
+identifiers: mixed-case alphanumeric characters plus "-", "_", "$", and ":",
+(This encompasses the usual identfier formats for a variety of languages.)
+and you can have perfect reversability for identifiers under 10 characters and 
+partial reversability for longer identifiers. In both cases the resulting
+Symbol fits into a single 64-bit integer: a particularly simple and high-
+performance type to work with.  Clients that require reversability can simply 
+restrict themselves to identifiers under 10 characters: annoying, but not a
+deal breaker.
+
+The uses of Symbols are essentially the same for those as for interned strings:
+keys in key/value pair objects used by dynamic languages, binary file formats, 
+RPC calls, etc., where performance and speed are at a premium.
+
+This library is in the public domain, and the author disclaims copyright.

@@ -1,0 +1,4 @@
+*.o
+makefile.d
+symbol.a
+test_symbol
