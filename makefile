@@ -16,4 +16,4 @@ test_symbol: test_symbol.o symbol.a
 	g++ -o $@ $^
 
 test: test_symbol
-	./test_symbol
+	./test_symbol -v

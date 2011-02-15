@@ -80,10 +80,7 @@ throw()
 		const uint64_t letter_code = encode_letter(identifier[i]);
 
 		// Stack the letters up from right to left in the symbol.
-		//symbol |= ((Symbol)(code) << (LETTER_BITS*i));
-		// left to right:
-		symbol << LETTER_BITS;
-		symbol |= letter_code;
+		symbol |= letter_code << (LETTER_BITS*i);
 	}
 
 	return symbol;
@@ -94,10 +91,10 @@ throw(SymbolError)
 {
 	// TODO: this is duplicate work...
 	if ( !validate(identifier) ) {
-		throw SymbolError("bad encode: invalid character in identifier.");
+		throw SymbolError("invalid character in identifier.");
 	}
 	if ( identifier.length() > 10 ) {
-		throw SymbolError("bad encode: identifier too long for lossless encoding.");
+		throw SymbolError("identifier too long for lossless encoding.");
 	}
 	_value = encode_in_place(identifier.c_str());
 }
