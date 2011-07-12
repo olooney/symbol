@@ -1,4 +1,5 @@
 #include "symbol.h"
+#include "hsfh.h"
 
 namespace symbol {
 
@@ -9,6 +10,8 @@ static const unsigned short LETTER_BITS = 6;
 
 // compute the one-letter mask. For LETTER_BITS=6, the mask is binary 111111.
 static const uint64_t LETTER_MASK = (1<<LETTER_BITS)-1;
+
+static const uint64_t HIGH_BIT = 1UL << 63;
 
 // represent a single character (a-zA-Z0-9_) in 6 bits.
 // returns zero for any other character.  Never throws.
@@ -70,33 +73,37 @@ throw()
 	return true;
 }
 
-uint64_t encode_in_place(const char* identifier) 
-throw()
-{
-	uint64_t symbol = 0; // holds the resulting symbol.
-
-	short i=0;
-	for( ; i<SYMBOL_LEN && identifier[i] != '\0'; ++i ) {
-		const uint64_t letter_code = encode_letter(identifier[i]);
-
-		// Stack the letters up from right to left in the symbol.
-		symbol |= letter_code << (LETTER_BITS*i);
-	}
-
-	return symbol;
-}
-
 Symbol::Symbol(const std::string& identifier) 
-throw(SymbolError)
+	throw(SymbolError):
+	_value(0)
 {
 	// TODO: this is duplicate work...
 	if ( !validate(identifier) ) {
 		throw SymbolError("invalid character in identifier.");
 	}
-	if ( identifier.length() > 10 ) {
-		throw SymbolError("identifier too long for lossless encoding.");
+	size_t length = identifier.length();
+	if ( length > 10 ) {
+		// hash the middle into 32 bits
+		_value = SuperFastHash(identifier.c_str() + 3, length - 5);
+
+		// first three
+		_value |= encode_letter(identifier[0]) << 32;
+		_value |= encode_letter(identifier[1]) << (32 + LETTER_BITS);
+		_value |= encode_letter(identifier[2]) << (32 + LETTER_BITS * 2);
+
+		// last two
+		_value |= encode_letter(identifier[length-2]) << (32 + LETTER_BITS * 3);
+		_value |= encode_letter(identifier[length-1]) << (32 + LETTER_BITS * 4);
+
+		// set the high bit to indicate lossy encoding
+		_value |= HIGH_BIT;
+	} else {
+		for( short i=0; i<SYMBOL_LEN && identifier[i] != '\0'; ++i ) {
+			const uint64_t letter_code = encode_letter(identifier[i]);
+			// Stack the letters up from right to left in the symbol.
+			_value |= letter_code << (LETTER_BITS*i);
+		}
 	}
-	_value = encode_in_place(identifier.c_str());
 }
 
 Symbol::Symbol(uint64_t symbol)
@@ -130,9 +137,24 @@ throw()
 std::string Symbol::decode() const
 throw()
 {
-	char identifier[SYMBOL_LEN+1];
-	decode_in_place(_value, identifier);
-	return std::string(identifier);
+	if ( _value & HIGH_BIT ) {
+		// 8 for the hex of the hash, 5 for the first three/
+		// last two, two understores, and a null character
+		// (in a pear tree.)
+		size_t LENGTH = 8 + 5 + 2 + 1;
+		char identifier[LENGTH];
+		identifier[0] = '?';
+		identifier[1] = '\0';
+		// TODO extract the hash and hex format it
+		// format the first three and last two
+		// put them together as "abc_2468ABCD_de"
+		// ... or something.
+		return identifier;
+	} else {
+		char identifier[SYMBOL_LEN+1];
+		decode_in_place(_value, identifier);
+		return identifier;
+	}
 }
 
 

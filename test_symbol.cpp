@@ -40,6 +40,36 @@ bool expectSymbolError(const std::string& identifier) {
 	return false;
 }
 
+bool lossy(const std::string& identifier) {
+	Symbol sym1(identifier);
+	Symbol sym2(identifier);
+
+	// make sure it's non-random
+	if ( sym1 != sym2 ) {
+		std::cout << "unreliable encoding of " << identifier << std::endl;
+		return false;
+	}
+
+	// make sure high bit was set
+	static const unsigned long HIGH_BIT = (1UL << 63);
+	static const unsigned long PENULTIMATE_BIT = (1UL << 62);
+	if ( (sym1.value() & HIGH_BIT ) != HIGH_BIT ) {
+		std::cout << "high bit of encoded " << identifier << " -> " << sym1.value() << " not set" << std::endl;
+		return false;
+	}
+
+	if ( sym1.value() & PENULTIMATE_BIT ) {
+		std::cout << "second-highest of encoded " << identifier << " -> " << sym1.value() << " is set" << std::endl;
+		return false;
+	}
+
+	// passed!
+	if ( verbose ) {
+		std::cout << "reliably encoded long identifier " << identifier << " as " << sym1.value() << std::endl;
+	}
+	return true;
+}
+
 bool option(char** argv, char option) {
 	while ( *argv ) {
 		char* arg = *argv;
@@ -70,6 +100,13 @@ int main(int argc, char** argv) {
 	passed &= expectSymbolError("!@#$#%");
 	passed &= expectSymbolError("hi there");
 	passed &= expectSymbolError("Mwahaha!!!");
-	passed &= expectSymbolError("0123456789A");
+
+	passed &= lossy("0123456789A");
+	passed &= lossy("abcdefghijklmnopqrstuvwxyz");
+	passed &= lossy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	passed &= lossy("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+	if ( passed ) std::cout << "passed." << std::endl;
+	else std::cout << "failed!" << std::endl;
 	return passed ? 0 : 1;
 }

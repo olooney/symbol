@@ -2,6 +2,7 @@
 #define SYMBOL_H
 #include <string>
 #include <stdexcept>
+#include <stdint.h>
 // #include "types.h"
 
 namespace symbol {
@@ -21,9 +22,6 @@ public:
 
 	// Note: default copy/assignment/dtor are fine
 
-	// implicit conversion to string via decode()
-	operator std::string() const throw();
-
 	// read-only access to the underlying value.
 	uint64_t value() const throw() { return _value; }
 
@@ -37,10 +35,15 @@ public:
 	static bool validate(const std::string& identifier) throw();
 	bool validate(uint64_t symbol) const throw();
 
+	// return the string representation, if possible.
 	std::string decode() const throw();
+
+	// implicit conversion to string via decode()
+	operator std::string() const throw() { return decode(); }
 
 	// all comparison operators
 	friend bool operator==(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value == rhs._value; }
+	friend bool operator!=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value != rhs._value; }
 	friend bool operator<=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value <= rhs._value; }
 	friend bool operator>=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value >= rhs._value; }
 	friend bool operator< (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value <  rhs._value; }
