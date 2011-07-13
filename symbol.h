@@ -14,7 +14,7 @@ public:
 };
 
 class Symbol {
-	uint64_t _value;
+	uint64_t _code;
 public:
 	// construct from string or numeric symbol.  Throw if bad format.
 	Symbol(uint64_t symbol) throw(SymbolError);
@@ -22,8 +22,11 @@ public:
 
 	// Note: default copy/assignment/dtor are fine
 
-	// read-only access to the underlying value.
-	uint64_t value() const throw() { return _value; }
+	// read-only access to the numeric code.
+	uint64_t code() const throw() { return _code; }
+
+	// returns true if the symbol was too long to encode exactly and was hashed instead.
+	bool isHashed();
 
 	// constructor is also available as Symbol::encode(identifier)...
 	static Symbol encode(const std::string& identifier) throw(SymbolError) { 
@@ -42,12 +45,12 @@ public:
 	operator std::string() const throw() { return decode(); }
 
 	// all comparison operators
-	friend bool operator==(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value == rhs._value; }
-	friend bool operator!=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value != rhs._value; }
-	friend bool operator<=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value <= rhs._value; }
-	friend bool operator>=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value >= rhs._value; }
-	friend bool operator< (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value <  rhs._value; }
-	friend bool operator> (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._value >  rhs._value; }
+	friend bool operator==(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code == rhs._code; }
+	friend bool operator!=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code != rhs._code; }
+	friend bool operator<=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code <= rhs._code; }
+	friend bool operator>=(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code >= rhs._code; }
+	friend bool operator< (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code <  rhs._code; }
+	friend bool operator> (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code >  rhs._code; }
 
 };
 

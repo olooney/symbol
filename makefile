@@ -3,7 +3,7 @@ default: test
 
 # automatically compute and include header dependencies
 makefile.d:
-	gcc -MM  > makefile.d
+	gcc -MM *.h *.cpp > makefile.d
 -include makefile.d
 
 %.o: %.cpp
@@ -17,3 +17,6 @@ test_symbol: test_symbol.o symbol.a
 
 test: test_symbol
 	./test_symbol
+
+clean:
+	rm -fv *.o test_symbol makefile.d

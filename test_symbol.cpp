@@ -1,4 +1,5 @@
 #include "symbol.h"
+#include "utilities.h"
 
 #include<iostream>
 
@@ -14,7 +15,7 @@ bool roundTrip(std::string identifier) {
 		bool recovered = (identifier == decoded);
 		
 		if ( verbose || !recovered ) {
-			std::cout << "round trip: " << identifier << " -> " << symbol.value() << " -> " << decoded;
+			std::cout << "round trip: " << identifier << " -> " << symbol.code() << " -> " << decoded;
 			if ( recovered ) std::cout << " recovered.\n";
 			else std::cout << "NOT RECOVERED!\n";
 		}
@@ -53,21 +54,33 @@ bool lossy(const std::string& identifier) {
 	// make sure high bit was set
 	static const unsigned long HIGH_BIT = (1UL << 63);
 	static const unsigned long PENULTIMATE_BIT = (1UL << 62);
-	if ( (sym1.value() & HIGH_BIT ) != HIGH_BIT ) {
-		std::cout << "high bit of encoded " << identifier << " -> " << sym1.value() << " not set" << std::endl;
+	if ( (sym1.code() & HIGH_BIT ) != HIGH_BIT ) {
+		std::cout << "high bit of encoded " << identifier << " -> " << sym1.code() << " not set" << std::endl;
 		return false;
 	}
 
-	if ( sym1.value() & PENULTIMATE_BIT ) {
-		std::cout << "second-highest of encoded " << identifier << " -> " << sym1.value() << " is set" << std::endl;
+	if ( sym1.code() & PENULTIMATE_BIT ) {
+		std::cout << "second-highest of encoded " << identifier << " -> " << sym1.code() << " is set" << std::endl;
 		return false;
+	}
+
+	if ( verbose ) {
+		std::cout << "lossy encoding: " << identifier << " -> " << sym1.code() << " -> " << sym1.decode() << std::endl;
 	}
 
 	// passed!
 	if ( verbose ) {
-		std::cout << "reliably encoded long identifier " << identifier << " as " << sym1.value() << std::endl;
+		std::cout << "reliably encoded long identifier " << identifier << " as " << sym1.code() << std::endl;
 	}
 	return true;
+}
+
+bool testLossyFormatCheck(const char* word, bool expected) {
+	bool result =symbol::matchesHashedFormat(word); 
+	if ( verbose || result != expected ) {
+		std::cout << "matchesHashedFormat(\"" << word << "\") returned " << result << ", expected " << expected << std::endl;
+	}
+	return result == expected;
 }
 
 bool option(char** argv, char option) {
@@ -84,6 +97,8 @@ bool option(char** argv, char option) {
 }
 
 int main(int argc, char** argv) {
+	std::cout << std::boolalpha;
+
 	if ( option(argv, 'h') ) {
 		std::cout << "usage: test_symbol [-v] [-h]\n"
 			<< "returns zero if all tests pass\n"
@@ -105,6 +120,16 @@ int main(int argc, char** argv) {
 	passed &= lossy("abcdefghijklmnopqrstuvwxyz");
 	passed &= lossy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	passed &= lossy("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+	passed &= testLossyFormatCheck("", false);
+	passed &= testLossyFormatCheck("bdfsasd", false);
+	passed &= testLossyFormatCheck("abc_1234abcd_dex", false);
+	passed &= testLossyFormatCheck("abc_1_34abcd_de", false);
+	passed &= testLossyFormatCheck("abc_1234aBcd_de", false);
+
+	passed &= testLossyFormatCheck("abc_1234abcd_de", true);
+	passed &= testLossyFormatCheck("abc_1234a____de", true);
+	passed &= testLossyFormatCheck("_AZ_567890ef_09", true);
 
 	if ( passed ) std::cout << "passed." << std::endl;
 	else std::cout << "failed!" << std::endl;
