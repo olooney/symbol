@@ -3,7 +3,6 @@
 #include <string>
 #include <stdexcept>
 #include <stdint.h>
-// #include "types.h"
 
 namespace symbol {
 
@@ -16,7 +15,7 @@ public:
 class Symbol {
 	uint64_t _code;
 public:
-	// construct from string or numeric symbol.  Throw if bad format.
+	// construct from string or numeric symbol code.  Throw if bad format.
 	Symbol(uint64_t symbol) throw(SymbolError);
 	Symbol(const std::string& identifier) throw(SymbolError); // implicit ok
 
@@ -32,6 +31,7 @@ public:
 	static Symbol encode(const std::string& identifier) throw(SymbolError) { 
 		return Symbol(identifier);
 	}
+	// TODO: I think these static methods might be clearer as functions in the symbol namespace.
 
 	// validate a potential identifier or symbol.  The constructors validate too, so
 	// you only need to use these if you'd prefer to avoid having to catch an exception.
@@ -43,6 +43,7 @@ public:
 
 	// implicit conversion to string via decode()
 	operator std::string() const throw() { return decode(); }
+	// TODO: can I also have an implicit conversion to uint_64 without introducing ambiguities?
 
 	// all comparison operators
 	friend bool operator==(const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code == rhs._code; }
@@ -53,6 +54,12 @@ public:
 	friend bool operator> (const Symbol& lhs, const Symbol& rhs) throw() { return lhs._code >  rhs._code; }
 
 };
+
+// TODO stand-alone symbol::encode() and symbol::decode() functions too.
+// uint64_t encode(const std::string& identifier);
+// uint64_t encode(Symbol symbol);
+// std::string decode(uint64_t symbolCode);
+// std::string decode(Symbol symbol);
 
 }
 #endif

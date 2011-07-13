@@ -147,20 +147,25 @@ Symbol::Symbol(const std::string& identifier)
 	// TODO: handle decoded long identifiers as a special case
 	// so that decoding and encoding a symbol always returns the original.
 	if ( length > 10 ) {
-		// hash the middle into 32 bits
-		_code = SuperFastHash(identifier.c_str() + 3, length - 5);
+		if ( matchesHashedFormat(identifier.c_str()) ) {
+			// TODO
+			_code = 42;
+		} else {
+			// hash the middle into 32 bits
+			_code = SuperFastHash(identifier.c_str() + 3, length - 5);
 
-		// first three
-		_code |= encode_letter(identifier[0]) << 32;
-		_code |= encode_letter(identifier[1]) << (32 + LETTER_BITS);
-		_code |= encode_letter(identifier[2]) << (32 + LETTER_BITS * 2);
+			// first three
+			_code |= encode_letter(identifier[0]) << 32;
+			_code |= encode_letter(identifier[1]) << (32 + LETTER_BITS);
+			_code |= encode_letter(identifier[2]) << (32 + LETTER_BITS * 2);
 
-		// last two
-		_code |= encode_letter(identifier[length-2]) << (32 + LETTER_BITS * 3);
-		_code |= encode_letter(identifier[length-1]) << (32 + LETTER_BITS * 4);
+			// last two
+			_code |= encode_letter(identifier[length-2]) << (32 + LETTER_BITS * 3);
+			_code |= encode_letter(identifier[length-1]) << (32 + LETTER_BITS * 4);
 
-		// set the high bit to indicate lossy encoding
-		_code |= HIGH_BIT;
+			// set the high bit to indicate lossy encoding
+			_code |= HIGH_BIT;
+		}
 	} else {
 		for( short i=0; i<SYMBOL_LEN && identifier[i] != '\0'; ++i ) {
 			const uint64_t letter_code = encode_letter(identifier[i]);
