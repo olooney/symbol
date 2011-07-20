@@ -81,42 +81,42 @@ Symbol objects would be used in local memory when working with symbols.
 See symbol.h for API details. Here are some examples:
 
     using symbol::Symbol;
-	std::string identifier = "name";
-	Symbol s1 = symbol::encode(identifier);
+    std::string identifier = "name";
+    Symbol s1 = symbol::encode(identifier);
 
-	// you can also use the implicit constructors from unsigned longs and 
-	// strings.  There is no default constructor. 
-	
-	// the empty string is a special case:
-	Symbol("").code() == 0;
+    // you can also use the implicit constructors from unsigned longs and 
+    // strings.  There is no default constructor. 
+    
+    // the empty string is a special case:
+    Symbol("").code() == 0;
 
-	// symbols have value semantics and can be copied and assigned naturally:
-	Symbol s2 = s1; 
+    // symbols have value semantics and can be copied and assigned naturally:
+    Symbol s2 = s1; 
 
-	// prints "name == name is true"
-	std::cout << s1 << " == " << s2 << " is " << 
-	    std::boolalpha << (s1 == s2) << std::endl;
-	// all comparison operators 
+    // prints "name == name is true"
+    std::cout << s1 << " == " << s2 << " is " << 
+        std::boolalpha << (s1 == s2) << std::endl;
+    // all comparison operators 
 
-	// prints the numeric, coded value of the symbol
-	std::cout << s1 << "'s code is " << s1.code() << std::endl;
+    // prints the numeric, coded value of the symbol
+    std::cout << s1 << "'s code is " << s1.code() << std::endl;
 
-	// there are several ways to decode to a string:
-	symbol::decode(s1) == s1.decode();
+    // there are several ways to decode to a string:
+    symbol::decode(s1) == s1.decode();
 
-	// including implicit conversion:
-	std::string("") + s1 == std::string(s1);
+    // including implicit conversion:
+    std::string("") + s1 == std::string(s1);
 
-	// legal identifiers consist only of upper- and lowercase letters,
-	// digits, and underscores, e.g. "Test_Code_321". A SymbolError
-	// with be thrown if you attempt to encode an illegal value:
-	try { 
-	    Symbol("I'm illegal!");
-	} catch ( symbol::SymbolError& e ) {
-	    // ...
-	}
+    // legal identifiers consist only of upper- and lowercase letters,
+    // digits, and underscores, e.g. "Test_Code_321". A SymbolError
+    // with be thrown if you attempt to encode an illegal value:
+    try { 
+        Symbol("I'm illegal!");
+    } catch ( symbol::SymbolError& e ) {
+        // ...
+    }
 
-	// sometimes it's more intuitive to validate an identifier directly:
-	if ( symbol::validate(unknownIdentifier) ) ...
+    // sometimes it's more intuitive to validate an identifier directly:
+    if ( symbol::validate(unknownIdentifier) ) ...
 
 
