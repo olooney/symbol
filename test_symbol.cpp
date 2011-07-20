@@ -1,27 +1,110 @@
-#include "symbol.h"
-#include "utilities.h"
+// Ad-hoc unit tests for the symbol library.
+// prints "passed." and returns a zero exit code if all the tests pass.
+// Returns non-zero exit-code and outputs error messages for any failing tests.
+//   "-v" option for verbose mode, which prints the details of each test
+//   "-h" option prints the help message and exits.
+// regardless of if it passed or failed.
 
 #include<iostream>
+#include<sstream>
+#include "symbol.h"
 
 using symbol::Symbol;
 using symbol::SymbolError;
 
+// global variable for verbose mode. Test functions will do additional output if set
 bool verbose = true;
 
-bool roundTrip(std::string identifier) {
+// some test functions. Return true if the test passed.
+bool testEncodeDecode(std::string identifier);
+bool expectSymbolError(const std::string& identifier);
+bool testLossy(const std::string& identifier);
+bool testDecodeReencode(const char* word, bool expected);
+bool testAPI();
+
+// ad-hoc utility to look for an option (-x, -y, etc.) in the command line arguments.
+bool option(char** argv, char option);
+
+int main(int argc, char** argv) {
+	std::cout << std::boolalpha;
+
+	if ( option(argv, 'h') ) {
+		std::cout << "usage: test_symbol [-v] [-h]\n"
+			<< "exits with zero if all tests pass\n"
+			<< "-v option for verbose output\n"
+			<< "-h option for these instructions\n";
+		return 0;
+	}
+	verbose = option(argv, 'v');
+
+	bool passed = true;
+
+	passed &= testAPI();
+
+	// the empty string is encoded as 0 as a special case.
+	passed &= testEncodeDecode("");
+
+	// some simple short identifiers which should be encoded exactly.
+	passed &= testEncodeDecode("hello");
+	passed &= testEncodeDecode("abyz019_AZ");
+	passed &= testEncodeDecode("0123456789");
+
+	// some bad identifiers which can't be encoded at all.
+	passed &= expectSymbolError(" ");
+	passed &= expectSymbolError(" bad ");
+	passed &= expectSymbolError("!@#$#%");
+	passed &= expectSymbolError("hi there");
+	passed &= expectSymbolError("Mwahaha!!");
+
+	// these can be reliably encoded, but some information is lost so they
+	// can't be entirely decoded again.
+	passed &= testLossy("0123456789A");
+	passed &= testLossy("abcdefghijklmnopqrstuvwxyz");
+	passed &= testLossy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	passed &= testLossy("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+	// short symbol identifiers should be recovered exactly
+	passed &= testDecodeReencode("", true);
+	passed &= testDecodeReencode("hello", true);
+	passed &= testDecodeReencode("0123456789", true);
+	// long symbol identifiers will lose information
+	passed &= testDecodeReencode("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", false);
+
+	// these are all examples of correctly formatted lossy-encoded symbols, so should match when re-encoded.
+	passed &= testDecodeReencode("abc_1234abcd_de", true);
+	passed &= testDecodeReencode("abc_1234a____de", true);
+	passed &= testDecodeReencode("_AZ_567890ef_09", true);
+
+	// these don't quite match, middle should be hashed and won't match exactly when re-encoded.
+	passed &= testDecodeReencode("abc_1234abcd_dex", false);
+	passed &= testDecodeReencode("abc_1_34abcd_de", false);
+	passed &= testDecodeReencode("abc_1234aBcd_de", false);
+
+	if ( passed ) std::cout << "passed." << std::endl;
+	else std::cout << "failed!" << std::endl;
+
+	return passed ? 0 : 1;
+}
+
+bool testEncodeDecode(std::string identifier) {
 	try { 
-		Symbol symbol(identifier);
-		std::string decoded = symbol.decode();
+		symbol::Symbol sym(identifier);
+		std::string decoded = sym.decode();
 		bool recovered = (identifier == decoded);
 		
 		if ( verbose || !recovered ) {
-			std::cout << "round trip: " << identifier << " -> " << symbol.code() << " -> " << decoded;
+			std::cout << "round trip: " << identifier << " -> " << sym.code() << " -> " << decoded;
 			if ( recovered ) std::cout << " recovered.\n";
 			else std::cout << "NOT RECOVERED!\n";
 		}
 
-		return recovered;
-	} catch ( SymbolError& e ) {
+		bool lossy = sym.is_lossy();
+		if ( lossy ) {
+			std::cout << "lost information encoding " << identifier << std::endl;
+		}
+
+		return recovered && !lossy;
+	} catch ( symbol::SymbolError& e ) {
 		std::cout << "unexpected SymbolError " << e.what() << std::endl;
 		return false;
 	}
@@ -29,9 +112,9 @@ bool roundTrip(std::string identifier) {
 
 bool expectSymbolError(const std::string& identifier) {
 	try { 
-		Symbol symbol(identifier);
-		std::string decoded = symbol.decode();
-	} catch ( SymbolError& e ) {
+		symbol::Symbol sym(identifier);
+		std::string decoded = sym.decode();
+	} catch ( symbol::SymbolError& e ) {
 		if ( verbose ) {
 			std::cout << "caught expected error: " << e.what() << std::endl;
 		}
@@ -41,11 +124,11 @@ bool expectSymbolError(const std::string& identifier) {
 	return false;
 }
 
-bool lossy(const std::string& identifier) {
-	Symbol sym1(identifier);
-	Symbol sym2(identifier);
+bool testLossy(const std::string& identifier) {
+	symbol::Symbol sym1(identifier);
+	symbol::Symbol sym2(identifier);
 
-	// make sure it's non-random
+	// make sure it's consistent (non-random)
 	if ( sym1 != sym2 ) {
 		std::cout << "unreliable encoding of " << identifier << std::endl;
 		return false;
@@ -64,6 +147,10 @@ bool lossy(const std::string& identifier) {
 		return false;
 	}
 
+	if ( !sym1.is_lossy() ) {
+		std::cout << "symbol " << identifier << " does not self-report as lossy." << std::endl;
+	}
+
 	if ( verbose ) {
 		std::cout << "lossy encoding: " << identifier << " -> " << sym1.code() << " -> " << sym1.decode() << std::endl;
 	}
@@ -75,12 +162,76 @@ bool lossy(const std::string& identifier) {
 	return true;
 }
 
-bool testLossyFormatCheck(const char* word, bool expected) {
-	bool result =symbol::matchesHashedFormat(word); 
-	if ( verbose || result != expected ) {
-		std::cout << "matchesHashedFormat(\"" << word << "\") returned " << result << ", expected " << expected << std::endl;
+bool testDecodeReencode(const char* word, bool expected) {
+	symbol::Symbol encoded(word);
+	std::string decoded = encoded.decode();
+	symbol::Symbol re_encoded(decoded);
+	bool matched = decoded == word;
+	bool success = (matched == expected) && (re_encoded == encoded);
+	if ( verbose || !success ) {
+		std::cout << "original: " << word << ", encoded: " << encoded.code() << ", decoded: " << decoded << ", re-encoded: " << re_encoded.code() << ", sucess: " << success << std::endl;
 	}
-	return result == expected;
+	return success;
+}
+
+// test the API for C++ intuitiveness, example of use.
+bool testAPI() {
+	bool passed = true;
+	passed &= symbol::validate("");
+	passed &= symbol::validate("testing");
+	passed &= !symbol::validate("help!");
+	passed &= !symbol::validate("save me");
+
+	uint64_t code = symbol::encode("Test").code();
+	// test decode(uint64_t) override
+	std::string identifier = symbol::decode(code); 
+	passed &= (identifier == "Test");
+
+	// test implicit and explicit construction from unsigned long
+	passed &= Symbol(code) > 0; 
+	
+	symbol::Symbol sym("Testing");
+	std::string name;
+	name = sym; // implicit conversion from Symbol to string
+	passed &= (name == "Testing");
+
+	// test decode(Symbol) override
+	name = symbol::decode(sym); 
+	passed &= (name == "Testing");
+
+	// standard output operator
+	std::stringstream ss;
+	ss << sym; 
+	passed &= (ss.str() == "Testing");
+
+	// test copy constructor... and setup for comparison operators.
+	symbol::Symbol sym2(sym);
+
+	// comparison operators.
+	symbol::Symbol sym3("thisIsARatherLongSymbol");
+	passed &= (sym == sym);
+	passed &= !(sym != sym);
+	passed &= (sym <= sym);
+	passed &= (sym >= sym);
+
+	passed &= (sym == sym2);
+	passed &= (sym <= sym2);
+	passed &= (sym >= sym2);
+
+	passed &=  (sym  != sym3);
+	passed &= !(sym  == sym3);
+	passed &=  (sym  <  sym3);
+	passed &= !(sym  >  sym3);
+	passed &=  (sym3 >  sym );
+	passed &= !(sym3 <  sym );
+	
+	// we don't need detailed error reporting here. If this test compiles 
+	// it's unlikely to fail at runtime.
+	if ( !passed ) {
+		std::cout << "failed basic API usage test." << std::endl;
+	}
+
+	return passed;
 }
 
 bool option(char** argv, char option) {
@@ -96,42 +247,3 @@ bool option(char** argv, char option) {
 	return false;
 }
 
-int main(int argc, char** argv) {
-	std::cout << std::boolalpha;
-
-	if ( option(argv, 'h') ) {
-		std::cout << "usage: test_symbol [-v] [-h]\n"
-			<< "returns zero if all tests pass\n"
-			<< "-v option for verbose output\n"
-			<< "-h option for these instructions\n";
-		return 0;
-	}
-	verbose = option(argv, 'v');
-	bool passed = true;
-	passed &= roundTrip("");
-	passed &= roundTrip("hello");
-	passed &= roundTrip("abyz019_AZ");
-	passed &= roundTrip("0123456789");
-	passed &= expectSymbolError("!@#$#%");
-	passed &= expectSymbolError("hi there");
-	passed &= expectSymbolError("Mwahaha!!!");
-
-	passed &= lossy("0123456789A");
-	passed &= lossy("abcdefghijklmnopqrstuvwxyz");
-	passed &= lossy("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	passed &= lossy("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-
-	passed &= testLossyFormatCheck("", false);
-	passed &= testLossyFormatCheck("bdfsasd", false);
-	passed &= testLossyFormatCheck("abc_1234abcd_dex", false);
-	passed &= testLossyFormatCheck("abc_1_34abcd_de", false);
-	passed &= testLossyFormatCheck("abc_1234aBcd_de", false);
-
-	passed &= testLossyFormatCheck("abc_1234abcd_de", true);
-	passed &= testLossyFormatCheck("abc_1234a____de", true);
-	passed &= testLossyFormatCheck("_AZ_567890ef_09", true);
-
-	if ( passed ) std::cout << "passed." << std::endl;
-	else std::cout << "failed!" << std::endl;
-	return passed ? 0 : 1;
-}

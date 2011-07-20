@@ -1,5 +1,6 @@
+# build the symbol library and optionally test it.
 
-default: test
+default: symbol.a
 
 # automatically compute and include header dependencies
 makefile.d:
@@ -7,13 +8,13 @@ makefile.d:
 -include makefile.d
 
 %.o: %.cpp
-	g++ -c -o $@ $<
+	g++ -Wall -c -o $@ $<
 
 symbol.a: symbol.o 
 	ar rcs $@ $^
 
 test_symbol: test_symbol.o symbol.a
-	g++ -o $@ $^
+	g++ -Wall -o $@ $^
 
 test: test_symbol
 	./test_symbol

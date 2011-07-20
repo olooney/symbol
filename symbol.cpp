@@ -25,9 +25,7 @@ static const uint64_t HIGH_BIT = 1UL << 63;
 
 // represent a single character (a-zA-Z0-9_) in 6 bits.
 // returns zero for any other character.  Never throws.
-uint64_t encode_letter(char letter) 
-throw()
-{
+uint64_t encode_letter(char letter) throw() {
 	// all encodable characters are in the range 48-122.  That range also
 	// includes some non-encodable characters.  This lookup table maps
 	// characters in that range to a 5-bit number.  Gaps are filled with 0.
@@ -55,11 +53,16 @@ throw()
 	return lookup_table[ ascii_code-48 ];
 }
 
+uint64_t encode_letter_or_throw(char letter) throw(SymbolError) {
+	uint64_t code = encode_letter(letter);
+	if ( code == 0 ) throw SymbolError(std::string("unable to encode letter '") + letter + "'");
+	return code;
+}
+
+
 // returns a letter (a-z or _) for the give 6-bit code.
 // returns the null character for 0 or codes more than 6-bits.
-char decode_letter(uint64_t code)
-throw()
-{
+char decode_letter(uint64_t code) throw() {
 	// reverse lookup table.  Since codes are in a compact
 	// sequence from 1-63 we can simply use a string.
 	static const char* lookup_table = 
@@ -72,13 +75,12 @@ throw()
 	return lookup_table[code];
 }
 
-bool isIdentifier(const char c) 
-{ 
+bool is_identifier(const char c) { 
 	return c == '_' || isalnum(c); 
 }
 
 // note: only lower-case hexidecimal characters are checked for.
-bool isHex(const char c) { 
+bool is_hex(const char c) { 
 	return 
 		( '0' <= c && c <= '9' ) || 
 		( 'a' <= c && c <= 'z' ); 
@@ -86,20 +88,20 @@ bool isHex(const char c) {
 
 // determines if a word is an identifier in the 'abc_1234abcd_de'
 // format used to decode lossy symbols.
-bool matchesHashedFormat(const char* word) {
+bool matches_lossy_format(const char* word) {
 	const char* pc = word;
-	if ( !isIdentifier(*pc) ) return false;
+	if ( !is_identifier(*pc) ) return false;
 	pc++;
-	if ( !isIdentifier(*pc) ) return false;
+	if ( !is_identifier(*pc) ) return false;
 	pc++;
-	if ( !isIdentifier(*pc) ) return false;
+	if ( !is_identifier(*pc) ) return false;
 	pc++;
 	if ( *pc != '_' ) return false;
 	pc++;
-	if ( !isHex(*pc) ) return false;
+	if ( !is_hex(*pc) ) return false;
 	pc++;
 	size_t length = 1;
-	while ( isHex(*pc) && length < 8 ) {
+	while ( is_hex(*pc) && length < 8 ) {
 		pc++;
 		length++;
 	}
@@ -110,86 +112,78 @@ bool matchesHashedFormat(const char* word) {
 	}
 	if ( *pc != '_' ) return false;
 	pc++;
-	if ( !isIdentifier(*pc) ) return false;
+	if ( !is_identifier(*pc) ) return false;
 	pc++;
-	if ( !isIdentifier(*pc) ) return false;
+	if ( !is_identifier(*pc) ) return false;
 	pc++;
 	if ( *pc != '\0' ) return false;
 	return true;
 }
 
-bool Symbol::isHashed() 
-{
+bool Symbol::is_lossy() {
 	return _code & HIGH_BIT;
 }
 
-// make sure the symbol name consists only of allowed characters.
-bool Symbol::validate(const std::string& identifier)
-throw()
-{
-	size_t len = identifier.length();
-	for ( size_t i=0; i < len; ++i ) {
-		if ( !encode_letter(identifier[i]) ) return false;
-	}
-	return true;
-}
-
-Symbol::Symbol(const std::string& identifier) 
-	throw(SymbolError):
+Symbol::Symbol(const std::string& identifier) throw(SymbolError):
 	_code(0)
 {
-	// TODO: this is duplicate work...
-	if ( !validate(identifier) ) {
-		throw SymbolError("invalid character in identifier.");
-	}
-
 	size_t length = identifier.length();
-	// TODO: handle decoded long identifiers as a special case
-	// so that decoding and encoding a symbol always returns the original.
+
 	if ( length > 10 ) {
-		if ( matchesHashedFormat(identifier.c_str()) ) {
-			// TODO
-			_code = 42;
+		const char* cid = identifier.c_str();
+	
+		// There are two ways to calculate the lossy hash of the middle.
+		// If the middle looks like a hex value surrounded by underscores,
+		// simply evaluate the hex value.  This ensures that decoding and
+		// re-encoding a long identifier has a consistent value.
+		// Otherwise, simply take the hashed value of the whole string.
+		if ( matches_lossy_format(cid) ) {
+			// extract the hex value from the middle
+			char hex_buffer[16];
+			strcpy(hex_buffer, cid+4);
+			char* pc=hex_buffer;
+			for ( ; *pc != '_'; pc++ );
+			*pc = '\0';
+
+			// read the hex string into the code, filling the lower 32
+			sscanf(hex_buffer, "%lx", &_code);
 		} else {
+			// validate the middle
+			const char* pend = cid + length - 5;
+			for ( const char* pc = cid+3; pc < pend; pc++ ) encode_letter_or_throw(*pc);
+
 			// hash the middle into 32 bits
-			_code = SuperFastHash(identifier.c_str() + 3, length - 5);
-
-			// first three
-			_code |= encode_letter(identifier[0]) << 32;
-			_code |= encode_letter(identifier[1]) << (32 + LETTER_BITS);
-			_code |= encode_letter(identifier[2]) << (32 + LETTER_BITS * 2);
-
-			// last two
-			_code |= encode_letter(identifier[length-2]) << (32 + LETTER_BITS * 3);
-			_code |= encode_letter(identifier[length-1]) << (32 + LETTER_BITS * 4);
-
-			// set the high bit to indicate lossy encoding
-			_code |= HIGH_BIT;
+			_code = SuperFastHash(cid + 3, length - 5);
 		}
+
+		// first three
+		_code |= encode_letter_or_throw(identifier[0]) << 32;
+		_code |= encode_letter_or_throw(identifier[1]) << (32 + LETTER_BITS);
+		_code |= encode_letter_or_throw(identifier[2]) << (32 + LETTER_BITS * 2);
+
+		// last two
+		_code |= encode_letter_or_throw(identifier[length-2]) << (32 + LETTER_BITS * 3);
+		_code |= encode_letter_or_throw(identifier[length-1]) << (32 + LETTER_BITS * 4);
+
+		// set the high bit to indicate lossy encoding
+		_code |= HIGH_BIT;
 	} else {
 		for( short i=0; i<SYMBOL_LEN && identifier[i] != '\0'; ++i ) {
-			const uint64_t letter_code = encode_letter(identifier[i]);
+			const uint64_t letter_code = encode_letter_or_throw(identifier[i]);
 			// Stack the letters up from right to left in the symbol.
 			_code |= letter_code << (LETTER_BITS*i);
 		}
 	}
 }
 
-Symbol::Symbol(uint64_t symbol)
-throw(SymbolError):
+Symbol::Symbol(uint64_t symbol) throw(SymbolError):
 	_code(symbol)
-{
-	// TODO: throw if invalid?  Pretty much the only way
-	// a number can be an invalid symbol code is if it's 
-	// penultimate bit is set. That's not very useful.
-}
+{ }
 
 // decodes the symbol into the given identifier buffer.
 // the buffer must be able to hold SYMBOL_LEN characters 
 // plus a null terminator.
-void decode_in_place(uint64_t symbol, char* identifier) 
-throw()
-{
+void decode_in_place(uint64_t symbol, char* identifier) throw() {
 	for ( short i=0; i<SYMBOL_LEN; ++i ) {
 		// decode the rightmost letter of the symbol.
 		const uint64_t code = symbol & LETTER_MASK;
@@ -205,9 +199,7 @@ throw()
 	identifier[SYMBOL_LEN] = '\0';
 }
 
-std::string Symbol::decode() const
-throw()
-{
+std::string Symbol::decode() const throw() {
 	if ( _code & HIGH_BIT ) {
 		// maximum possible length is 8 for the hex of the hash, 5 for the
 		// first-three/last-two, two understores, and a null character (in a
@@ -247,15 +239,32 @@ throw()
 		// null terminate
 		identifier[15] = '\0';
 
-		// TODO extract the hash and hex format it
-		// format the first three and last two
-		// put them together as "abc_2468ABCD_de"
-		// ... or something.
 		return identifier;
 	} else {
 		char identifier[SYMBOL_LEN+1];
 		decode_in_place(_code, identifier);
 		return identifier;
+	}
+}
+
+// stand alone function API
+Symbol encode(const std::string& identifier) throw(SymbolError) {
+	return Symbol(identifier);
+}
+std::string decode(uint64_t code) throw() {
+	return Symbol(code).decode();
+}
+std::string decode(Symbol symbol) throw() {
+	return symbol.decode();
+}
+
+// make sure the symbol name consists only of allowed characters.
+bool validate(const std::string& identifier) throw() {
+	try {
+		Symbol symbol(identifier);
+		return true;
+	} catch ( SymbolError& e ) {
+		return false;
 	}
 }
 
