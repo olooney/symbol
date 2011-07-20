@@ -54,8 +54,8 @@ longer identifiers. In both cases the resulting Symbol fits into a single
 Clients that require reversability can simply restrict themselves to
 identifiers under 10 characters: annoying, but not a deal breaker.
 
-What do you *DO* with a library like this?  The next obvious step would be to
-provide a key/value data structure, although in C++ std::map<Symbol, T> would
+What do you *do* with a library like this?  The next obvious step would be to
+provide a key/value data structure, although `std::map<Symbol, T>` would
 probably work fine. Such a map could be used as a symbol table, perhaps for a
 custom language. Or, since symbols can be reliably encoded across different
 machines, you could use it as the basis of a binary wire protocol or file
@@ -80,7 +80,6 @@ Symbol objects would be used in local memory when working with symbols.
 
 See symbol.h for API details. Here are some examples:
 
-```C++
     using symbol::Symbol;
     std::string identifier = "name";
     Symbol s1 = symbol::encode(identifier);
@@ -119,5 +118,4 @@ See symbol.h for API details. Here are some examples:
 
     // sometimes it's more intuitive to validate an identifier directly:
     if ( symbol::validate(unknownIdentifier) ) ...
-```
 
