@@ -8,7 +8,7 @@ licensed under the LGPL 2.1 license.  I've included the required GPL and LGPL
 license files necessary to redistribute it. Since this library depends
 crucially on an LGPL component, it too is licensed under LGPL.
 
-[HSHF]: http://www.azillionmonkeys.com/qed/hash.html
+[HSFH]: http://www.azillionmonkeys.com/qed/hash.html
 
 Prior Art & Motivation
 ----------------------
@@ -80,6 +80,7 @@ Symbol objects would be used in local memory when working with symbols.
 
 See symbol.h for API details. Here are some examples:
 
+```C++
     using symbol::Symbol;
     std::string identifier = "name";
     Symbol s1 = symbol::encode(identifier);
@@ -118,5 +119,5 @@ See symbol.h for API details. Here are some examples:
 
     // sometimes it's more intuitive to validate an identifier directly:
     if ( symbol::validate(unknownIdentifier) ) ...
-
+```
 
