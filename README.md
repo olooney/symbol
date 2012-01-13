@@ -14,12 +14,12 @@ Prior Art & Motivation
 ----------------------
 When runtime flexibility is more important than compile-time type checking,
 strings are often used as unique identifiers. For example, rather than
-defining intergal constants RED, BLUE, GREEN, etc., you might colors around
+defining intergal constants RED, BLUE, GREEN, etc., you might pass colors
 as strings "red", "blue", "green". This makes it easy to store them in config
-files, debug them, and manipulate them at runtime, but means that you have to
-handle errors like "bleen" at runtime. One disadvantage of this technique
-is that comparing, sorting, and searching for strings is rather slower than
-doing the same for numbers, and can waste memory if defensive copies are used.
+files, debug them, and manipulate them at runtime, but also means that you have to
+handle errors like "bleen" at runtime. Another disadvantage of the string approach
+is that comparing, sorting, and searching is rather slower for strings than
+for numbers and can waste memory if the strings are repeated.
 
 One way to solve these problems while keeping the runtime flexibility is
 to register unique, immutable strings in a single shared registry. Everybody
@@ -35,8 +35,8 @@ stored forever, or impact performance if it needs garbage collection.
 
 The key insight behind the Symbol library is that the registry (the pool of the
 originals of the interned strings), is itself unnecessary if you're willing
-to give up perfect reversability. By giving up the registry, we automatically
-remove thread and process syncronization concerns. Since we don't need a lookup
+to give up perfect reversability. Getting rid of the registry automatically
+removes thread and process syncronization concerns: since we don't need a lookup
 table, we can serialize, precompute, or pass around Symbols to our hearts
 content. The mere fact that we're gaining functionality by removing features 
 suggests this is an avenue worth exploring.
@@ -46,12 +46,12 @@ hash the strings to some unique identifier. However, that that makes debugging
 very difficult indeed, and if someone did need reversabilty for some reason
 they would simply be out of luck.
 
-The symbol library provides a compromise: you restrict yourself to C identifiers
+This library provides a compromise: restrict yourself to C identifiers
 (mixed-case alphanumeric characters plus underscores), and you can have perfect
 reversability for identifiers of length 10 or less and partial reversability for
 longer identifiers. In both cases the resulting Symbol fits into a single
 64-bit integer: a particularly simple and high-performance type to work with.
-Clients that require reversability can simply restrict themselves to
+Clients that require full reversability can simply restrict themselves to
 identifiers under 10 characters: annoying, but not a deal breaker.
 
 What do you *do* with a library like this?  The next obvious step would be to
@@ -65,7 +65,7 @@ formats, RPC calls, etc., anywhere performance and memory are critical.
 
 Usage
 -----
-Build with `make`. Use `make test` to run the unit tests. To use the library,
+Build with `make`. Use `make test` to run the tests. To use the library,
 include symbol.h and link against symbol.a. All functionality is inside
 the `symbol` namespace. The primary class is `symbol::Symbol`, a comparable
 value type. Symbols fit in 64 bits (`sizeof(symbol::Symbol) == 8`) so there's
