@@ -51,9 +51,14 @@ int main(int argc, char** argv) {
 
 	// some bad identifiers which can't be encoded at all.
 	passed &= expectSymbolError(" ");
-	passed &= expectSymbolError(" bad ");
-	passed &= expectSymbolError("!@#$#%");
+	passed &= expectSymbolError("trailing ");
+	passed &= expectSymbolError(" padded ");
 	passed &= expectSymbolError("hi there");
+	passed &= expectSymbolError("!@#$#%");
+	passed &= expectSymbolError("excited!");
+	passed &= expectSymbolError("@ruby");
+	passed &= expectSymbolError("#yolo");
+	passed &= expectSymbolError("$ngRoute");
 	passed &= expectSymbolError("Mwahaha!!");
 
 	// these can be reliably encoded, but some information is lost so they
@@ -66,6 +71,11 @@ int main(int argc, char** argv) {
 	// short symbol identifiers should be recovered exactly
 	passed &= testDecodeReencode("", true);
 	passed &= testDecodeReencode("hello", true);
+	passed &= testDecodeReencode("_", true);
+	passed &= testDecodeReencode("__init__", true);
+	passed &= testDecodeReencode("0", true);
+	passed &= testDecodeReencode("1", true);
+	passed &= testDecodeReencode("42", true);
 	passed &= testDecodeReencode("0123456789", true);
 	// long symbol identifiers will lose information
 	passed &= testDecodeReencode("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ", false);
@@ -178,6 +188,7 @@ bool testDecodeReencode(const char* word, bool expected) {
 bool testAPI() {
 	bool passed = true;
 	passed &= symbol::validate("");
+	passed &= symbol::validate("0");
 	passed &= symbol::validate("testing");
 	passed &= !symbol::validate("help!");
 	passed &= !symbol::validate("save me");
