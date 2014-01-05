@@ -13,7 +13,7 @@ makefile.d:
 symbol.a: symbol.o 
 	ar rcs $@ $^
 
-test_symbol: test_symbol.o symbol.a
+test_symbol: test_symbol.o symbol.a symbol_space.h
 	g++ -Wall -o $@ $^
 
 test: test_symbol

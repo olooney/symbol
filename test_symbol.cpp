@@ -8,9 +8,7 @@
 #include<iostream>
 #include<sstream>
 #include "symbol.h"
-
-using symbol::Symbol;
-using symbol::SymbolError;
+#include "symbol_space.h"
 
 // global variable for verbose mode. Test functions will do additional output if set
 bool verbose = true;
@@ -24,6 +22,8 @@ bool testAPI();
 
 // ad-hoc utility to look for an option (-x, -y, etc.) in the command line arguments.
 bool option(char** argv, char option);
+
+bool testSymbolSpace();
 
 int main(int argc, char** argv) {
 	std::cout << std::boolalpha;
@@ -89,6 +89,8 @@ int main(int argc, char** argv) {
 	passed &= testDecodeReencode("abc_1234abcd_dex", false);
 	passed &= testDecodeReencode("abc_1_34abcd_de", false);
 	passed &= testDecodeReencode("abc_1234aBcd_de", false);
+
+    passed &= testSymbolSpace();
 
 	if ( passed ) std::cout << "passed." << std::endl;
 	else std::cout << "failed!" << std::endl;
@@ -199,7 +201,7 @@ bool testAPI() {
 	passed &= (identifier == "Test");
 
 	// test implicit and explicit construction from unsigned long
-	passed &= Symbol(code) > 0; 
+	passed &= symbol::Symbol(code) > 0; 
 	
 	symbol::Symbol sym("Testing");
 	std::string name;
@@ -258,3 +260,141 @@ bool option(char** argv, char option) {
 	return false;
 }
 
+bool testSymbolSpace() {
+    bool passed = true;
+    symbol::Space<int> point;
+    symbol::Symbol x("x");
+    symbol::Symbol y("y");
+    symbol::Symbol z("z"); // reserved for "misses"
+
+    // nothing to get from empty space
+    passed &= (point.get(x) == NULL);
+    passed &= (point.get(y) == NULL);
+    passed &= (point.get(z) == NULL);
+
+    point.del(x);
+    point.del(y);
+    point.del(z);
+
+    // one key
+    point.set(x, 42);
+    passed &= (*point.get(x) == 42);
+    passed &= (point.get(z) == NULL);
+    point.del(z); 
+    point.set(x, 99);
+    passed &= (*point.get(x) == 99);
+    point.del(x);
+    passed &= (point.get(x) == NULL);
+    point.del(z); 
+
+    // two keys
+    point.set(x, 1);
+    point.set(y, 2); // append
+    passed &= (*point.get(x) == 1);
+    passed &= (*point.get(y) == 2);
+
+    passed &= (point.get(z) == NULL);
+    point.del(z); 
+    point.del(x);
+    passed &= (point.get(x) == NULL);
+    passed &= (*point.get(y) == 2);
+    passed &= (point.get(z) == NULL);
+    point.del(z); 
+    point.del(y);
+    passed &= (point.get(x) == NULL);
+    passed &= (point.get(y) == NULL);
+    passed &= (point.get(z) == NULL);
+
+    // two keys, again, different order
+    point.set(y, 2);
+    point.set(x, 1); // insert before head
+    passed &= (*point.get(x) == 1);
+    passed &= (*point.get(y) == 2);
+    passed &= (point.get(z) == NULL);
+    point.del(z); 
+    point.del(x);
+    passed &= (point.get(x) == NULL);
+    passed &= (*point.get(y) == 2);
+    passed &= (point.get(z) == NULL);
+    point.del(z); 
+    point.del(y);
+    passed &= (point.get(x) == NULL);
+    passed &= (point.get(y) == NULL);
+    passed &= (point.get(z) == NULL);
+
+    // two keys, with overwritting this time
+    point.set(y, 2);
+    point.set(x, 1);
+    passed &= (*point.get(x) == 1);
+    passed &= (*point.get(y) == 2);
+    point.set(x, 3);
+    passed &= (*point.get(x) == 3);
+    passed &= (*point.get(y) == 2);
+    point.set(y, 4);
+    passed &= (*point.get(x) == 3);
+    passed &= (*point.get(y) == 4);
+    point.del(x);
+    point.del(y);
+    passed &= (point.get(x) == NULL);
+    passed &= (point.get(y) == NULL);
+    passed &= (point.get(z) == NULL);
+
+    // three keys
+    point.set(x, 1);
+    point.set(z, 3);
+    point.set(y, 2); // insert in the middle!
+    passed &= (*point.get(x) == 1);
+    passed &= (*point.get(y) == 2);
+    passed &= (*point.get(z) == 3);
+    // overwrite at head, middle, and end
+    point.set(x, 4);
+    point.set(y, 5); 
+    point.set(z, 6);
+    passed &= (*point.get(x) == 4);
+    passed &= (*point.get(y) == 5);
+    passed &= (*point.get(z) == 6);
+    // del from middle
+    point.del(y);
+    passed &= (*point.get(x) == 4);
+    passed &= (point.get(y) == NULL);
+    passed &= (*point.get(z) == 6);
+
+    symbol::Space<int> letters;
+    std::string test_data = 
+    "Templates are a way of making your classes more abstract by letting you"
+    "define the behavior of the class without actually knowing what datatype"
+    "will be handled by the operations of the class. In essence, this is what is"
+    "known as generic programming; this term is a useful way to think about"
+    "templates because it helps remind the programmer that a templated class"
+    "does not depend on the datatype (or types) it deals with. To a large"
+    "degree, a templated class is more focused on the algorithmic thought rather"
+    "than the specific nuances of a single datatype. Templates can be used in"
+    "conjunction with abstract datatypes in order to allow them to handle any"
+    "type of data. For example, you could make a templated stack class that can"
+    "handle a stack of any datatype, rather than having to create a stack class"
+    "for every different datatype for which you want the stack to function. The"
+    "ability to have a single class that can handle several different datatypes"
+    "means the code is easier to maintain, and it makes classes more reusable.";
+
+    for ( std::string::iterator it = test_data.begin(); it != test_data.end(); ++it) {
+        std::string letter(1, *it);
+        if ( symbol::validate(letter) ) { 
+            int count = 0;
+            if ( letters.get(letter) == NULL ) {
+                count = 0;
+            } else {
+                count = *letters.get(letter);
+            }
+            letters.set(letter, count+1);
+       }
+    }
+    passed &= (*letters.get(symbol::Symbol("e")) == 100); // count them yourself!
+    passed &= (*letters.get(symbol::Symbol("T")) == 4); 
+
+    if ( !passed ) {
+        std::cout << "failed symbol::Space tests." << std::endl;
+    }
+
+    return passed;
+
+}

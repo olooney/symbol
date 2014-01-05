@@ -55,7 +55,7 @@ std::string decode(uint64_t symbolCode) throw();
 std::string decode(Symbol symbol) throw();
 
 // validate a potential identifier .  The constructors validate too, so you
-// only need to use these if you'd prefer to avoid having to catch an exception.
+// only need to use validate() if you'd prefer to avoid having to catch an exception.
 bool validate(const std::string& identifier) throw();
 
 }

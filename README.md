@@ -54,14 +54,23 @@ longer identifiers. In both cases the resulting Symbol fits into a single
 Clients that require full reversability can simply restrict themselves to
 identifiers under 10 characters: annoying, but not a deal breaker.
 
-What do you *do* with a library like this?  The next obvious step would be to
-provide a key/value data structure, although `std::map<Symbol, T>` would
-probably work fine. Such a map could be used as a symbol table, perhaps for a
-custom language. Or, since symbols can be reliably encoded across different
-machines, you could use it as the basis of a binary wire protocol or file
-format. The uses of Symbols are essentially the same for those as for interned
-strings: keys in key/value pair objects used by dynamic languages, binary file
-formats, RPC calls, etc., anywhere performance and memory are critical.
+What do you *do* with a library like this? One obvious use is to keep track
+of identifiers in a programming language or file format, perhaps using
+a key/value namespace. Just such a library is provided by the
+`symbol::Space` template: it is a map-like structure with get/set/del methods
+where the keys are always `symbol::Symbols` but the value type is a template
+parameter. It could be used as the namespace of a dynamic language, for
+example. Of course, `std::map<Symbol, T>` would
+work just as well, if not better.  
+
+Another use, which takes advantage of the fact that Symbols can be reliably
+encoded across different machines, would be to use it as the basis of a binary
+wire protocol or file format. 
+
+In short, the use cases of Symbols are essentially the same for
+those as for interned strings: keys in key/value pair objects used by dynamic
+languages, binary file formats, RPC calls, etc., anywhere performance and
+memory are critical.
 
 Usage
 -----
@@ -79,6 +88,8 @@ representation, the code would be used for the binary representation, and
 Symbol objects would be used in local memory when working with symbols.
 
 See symbol.h for API details. Here are some examples:
+
+    #include <symbol.h>
 
     using symbol::Symbol;
     std::string identifier = "name";
@@ -118,4 +129,25 @@ See symbol.h for API details. Here are some examples:
 
     // sometimes it's more intuitive to validate an identifier directly:
     if ( symbol::validate(unknownIdentifier) ) ...
+
+The `symbol::Space` template class is a header-only library provided
+by symbol_space.h, and you use it like so:
+
+    #include <symbol_space.h>
+    symbol::Space<std::string> namespace;
+
+    namespace.set("filename", "diagram.svg");
+    namespace.set("format", "image/svg+xml");
+    namespace.set("data", "<svg>...</svg>");
+
+    // Be careful! get() returns a pointer, and 
+    // it will be NULL if the key isn't found
+    std::ofstream svg_file( namespace.get("filename")->c_str() );
+
+    if ( namespace.get("options") ) { ... }
+
+    // keys can be deleted with del()
+    namespace.del("data");
+    assert(namespace.get("data") == NULL);
+
 
